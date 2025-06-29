@@ -1,5 +1,7 @@
 # MapConnect
 
+## https://noobosaurus-r3x.github.io/MapConnect/
+
 **MapConnect** is a single‑page web tool that lets you drop GPS points on an interactive Leaflet map and see basic stats.
 
 ## What it does
