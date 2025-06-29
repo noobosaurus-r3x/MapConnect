@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapConnect - GPS Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e4e4e7;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(20, 20, 30, 0.95);
+            border-radius: 16px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .header {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+        .mode-toggle {
+            position: absolute;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .mode-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .content {
+            display: flex;
+            min-height: 75vh;
+        }
+        .sidebar {
+            width: 320px;
+            padding: 20px;
+            background: rgba(15, 15, 25, 0.8);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .map-container {
+            flex: 1;
+            position: relative;
+            background: #0a0a0a;
+        }
+        #map {
+            height: 75vh;
+            width: 100%;
+            border-radius: 0;
+        }
+        .input-section {
+            background: rgba(30, 30, 40, 0.6);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .input-section h3 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #a1a1aa;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .coord-inputs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .coord-inputs input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #e4e4e7;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .coord-inputs input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+        .coord-inputs input::placeholder {
+            color: #71717a;
+        }
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        .btn-secondary {
+            background: rgba(107, 114, 128, 0.8);
+            color: white;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        .btn-secondary:hover {
+            background: rgba(107, 114, 128, 1);
+            transform: translateY(-1px);
+        }
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 1);
+        }
+        .points-list {
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .points-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .points-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+        }
+        .points-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+        .point-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s;
+        }
+        .point-item:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.4);
+        }
+        .point-coords {
+            flex: 1;
+            font-size: 12px;
+        }
+        .point-coords strong {
+            color: #a78bfa;
+            font-size: 13px;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #6366f1;
+        }
+        .checkbox-group label {
+            font-size: 13px;
+            cursor: pointer;
+            color: #d1d5db;
+        }
+        .stats {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            color: #c7d2fe;
+        }
+        .help-text {
+            font-size: 11px;
+            color: #71717a;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            border-left: 2px solid #6366f1;
+        }
+        .empty-state {
+            color: #71717a;
+            text-align: center;
+            padding: 24px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ MapConnect</h1>
+            <button class="mode-toggle" onclick="toggleClickMode()">
+                <span id="modeText">📍 Click to add</span>
+            </button>
+        </div>
+        <div class="content">
+            <div class="sidebar">
+                <div class="input-section">
+                    <h3>Add a point</h3>
+                    <div class="coord-inputs">
+                        <input type="number" id="latitude" placeholder="Latitude" step="any">
+                        <input type="number" id="longitude" placeholder="Longitude" step="any">
+                    </div>
+                    <button class="btn btn-primary" onclick="addPoint()">
+                        <span>➕</span> Add point
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearAll()">
+                        <span>🗑️</span> Clear all
+                    </button>
+                    <div class="help-text">
+                        💡 Click on the map to quickly add points!<br>
+                        🔄 Drag and drop markers to reposition them
+                    </div>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="closePath" onchange="updateLines()">
+                    <label for="closePath">Close path</label>
+                </div>
+                <div class="input-section">
+                    <h3>GPS Points</h3>
+                    <div class="points-list" id="pointsList">
+                        <div class="empty-state">No points added</div>
+                    </div>
+                </div>
+                <div class="stats" id="stats">
+                    <strong>📊 Statistics</strong><br>
+                    Points: 0<br>
+                    Lines: 0
+                </div>
+            </div>
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Global variables
+        let map;
+        let points = [];
+        let markers = [];
+        let polylines = []; // Array for all polylines
+        let clickToAddMode = true;
+
+        // Initialize map with a light theme
+        function initMap() {
+            map = L.map('map').setView([46.8182, 8.2275], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+            map.on('click', function(e) {
+                if (clickToAddMode) {
+                    addPointFromMap(e.latlng.lat, e.latlng.lng);
+                }
+            });
+        }
+
+        // Toggle click mode
+        function toggleClickMode() {
+            clickToAddMode = !clickToAddMode;
+            const modeText = document.getElementById('modeText');
+            const button = document.querySelector('.mode-toggle');
+            if (clickToAddMode) {
+                modeText.textContent = '📍 Click to add';
+                button.style.background = 'rgba(34, 197, 94, 0.3)';
+                map.getContainer().style.cursor = 'crosshair';
+            } else {
+                modeText.textContent = '🔒 Click disabled';
+                button.style.background = 'rgba(239, 68, 68, 0.3)';
+                map.getContainer().style.cursor = '';
+            }
+        }
+
+        // Add a point from the map click
+        function addPointFromMap(lat, lng) {
+            document.getElementById('latitude').value = lat.toFixed(6);
+            document.getElementById('longitude').value = lng.toFixed(6);
+            addPoint();
+        }
+
+        // Add a point manually
+        function addPoint() {
+            const lat = parseFloat(document.getElementById('latitude').value);
+            const lng = parseFloat(document.getElementById('longitude').value);
+            if (isNaN(lat) || isNaN(lng)) {
+                alert('Please enter valid coordinates');
+                return;
+            }
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                alert('Invalid coordinates. Latitude: -90 to 90, Longitude: -180 to 180');
+                return;
+            }
+            const point = { lat, lng, id: Date.now() };
+            points.push(point);
+            const marker = L.marker([lat, lng], { draggable: true, opacity: 0.9 }).addTo(map);
+            marker.setIcon(L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="width: 12px; height: 12px; background: #374151; border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            }));
+            marker.bindPopup(`<div style="text-align: center;"><strong style="color: #374151;">Point ${points.length}</strong><br><small>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}</small></div>`);
+            marker.on('dragend', function(e) {
+                const newPos = e.target.getLatLng();
+                const index = markers.indexOf(marker);
+                points[index].lat = newPos.lat;
+                points[index].lng = newPos.lng;
+                updatePointsList();
+                updateLines();
+                updatePopups();
+            });
+            markers.push(marker);
+            updatePointsList();
+            updateLines();
+            updateStats();
+            if (points.length === 1) {
+                map.setView([lat, lng], 10);
+            } else {
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+            document.getElementById('latitude').value = '';
+            document.getElementById('longitude').value = '';
+        }
+
+        // Remove a point
+        function removePoint(id) {
+            const index = points.findIndex(p => p.id === id);
+            if (index > -1) {
+                map.removeLayer(markers[index]);
+                points.splice(index, 1);
+                markers.splice(index, 1);
+                updatePointsList();
+                updateLines();
+                updateStats();
+                updatePopups();
+            }
+        }
+
+        // Update the points list UI
+        function updatePointsList() {
+            const container = document.getElementById('pointsList');
+            if (points.length === 0) {
+                container.innerHTML = '<div class="empty-state">No points added</div>';
+                return;
+            }
+            let html = '';
+            points.forEach((point, index) => {
+                html += `<div class="point-item"><div class="point-coords"><strong>Point ${index + 1}</strong><br>${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</div><button class="btn btn-danger" onclick="removePoint(${point.id})">✕</button></div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // Update popups content
+        function updatePopups() {
+            markers.forEach((marker, index) => {
+                const point = points[index];
+                marker.setPopupContent(`<div style="text-align: center;"><strong style="color: #374151;">Point ${index + 1}</strong><br><small>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}</small></div>`);
+            });
+        }
+
+        // Draw or update polylines
+        function updateLines() {
+            polylines.forEach(line => map.removeLayer(line));
+            polylines = [];
+            if (points.length < 2) return;
+            let coords = markers.map(marker => {
+                const pos = marker.getLatLng();
+                return [pos.lat, pos.lng];
+            });
+            const closePath = document.getElementById('closePath').checked;
+            if (closePath && coords.length > 2) {
+                coords.push(coords[0]);
+            }
+            const mainLine = L.polyline(coords, {
+                color: '#374151',
+                weight: 3,
+                opacity: 0.8,
+                lineCap: 'round',
+                lineJoin: 'round',
+                smoothFactor: 1
+            }).addTo(map);
+            polylines.push(mainLine);
+        }
+
+        // Update statistics UI
+        function updateStats() {
+            const closePath = document.getElementById('closePath').checked;
+            let lineCount = Math.max(0, points.length - 1);
+            if (closePath && points.length > 2) {
+                lineCount = points.length;
+            }
+            document.getElementById('stats').innerHTML = `<strong>📊 Statistics</strong><br>Points: ${points.length}<br>Lines: ${lineCount}`;
+        }
+
+        // Clear everything
+        function clearAll() {
+            if (points.length === 0) return;
+            if (confirm('Are you sure you want to delete all points?')) {
+                markers.forEach(marker => map.removeLayer(marker));
+                polylines.forEach(line => map.removeLayer(line));
+                polylines = [];
+                points = [];
+                markers = [];
+                updatePointsList();
+                updateStats();
+                map.setView([46.8182, 8.2275], 6);
+            }
+        }
+
+        // Handle Enter key
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && (e.target.id === 'latitude' || e.target.id === 'longitude')) {
+                addPoint();
+            }
+        });
+
+        // Initialize map on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            updateStats();
+        });
+    </script>
+</body>
+</html>
