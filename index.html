@@ -326,19 +326,6 @@
             transform: translateX(24px);
         }
 
-        .toggle-slider {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            transition: transform 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            z-index: 1;
-        }
-
         /* Points List */
         .points-container {
             max-height: 400px;
@@ -455,8 +442,8 @@
         }
 
         .map-control-btn {
-            width: 40px;
-            height: 40px;
+            width: 56px;
+            height: 56px;
             background: rgba(255, 255, 255, 0.9);
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -464,9 +451,13 @@
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 4px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: visible;
         }
 
         .map-control-btn:hover {
@@ -475,11 +466,34 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
 
+        .map-control-btn .btn-label {
+            font-size: 10px;
+            line-height: 1;
+            font-weight: 600;
+            pointer-events: none;
+            user-select: none;
+        }
+
         /* Floating Action Button */
         .fab {
-            position: relative;
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 56px;
+            height: 56px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            z-index: 2000;
             overflow: visible;
-            z-index: 2000;      /* bouton */
         }
 
         .fab:hover {
@@ -550,12 +564,6 @@
             background: var(--primary-dark);
         }
 
-        .map-control-btn,
-        .fab {                     /* le FAB a le même problème */
-            position: relative;    /* crée un nouveau stacking context local */
-            overflow: visible;     /* laisse respirer le tooltip */
-        }
-
         /* Notification */
         .notification {
             position: fixed;
@@ -574,6 +582,25 @@
 
         .notification.show {
             opacity: 1;
+        }
+
+        /* Loading indicator */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--glass);
+            color: var(--text);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            display: none;
+            z-index: 2001;
+        }
+
+        .loading.show {
+            display: block;
         }
 
         /* Responsive */
@@ -607,26 +634,12 @@
                 top: 0.5rem;
                 right: 0.5rem;
             }
-        }
 
-        .map-control-btn {
-            width: 56px;                 /* un peu plus haut pour loger le texte */
-            height: 56px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
+            .fab {
+                bottom: 1rem;
+                right: 1rem;
+            }
         }
-
-        .map-control-btn .btn-label {
-            font-size: 10px;
-            line-height: 1;
-            font-weight: 600;
-            pointer-events: none;        /* le clic reste sur le bouton */
-            user-select: none;
-        }
-
     </style>
 </head>
 <body>
@@ -775,18 +788,19 @@
                         <i class="fas fa-bars"></i>
                         <span class="btn-label">Menu</span>
                     </button>
-                        <i class="fas fa-bars"></i>
-                    </button>
                 </div>
             </div>
         </div>
 
-        <button class="fab tooltip" data-tooltip="Add Current Location" onclick="quickAddCurrentLocation()">
+        <button class="fab" onclick="quickAddCurrentLocation()" title="Add Current Location">
             <i class="fas fa-crosshairs"></i>
         </button>
     </div>
 
     <div class="notification" id="notification"></div>
+    <div class="loading" id="loading">
+        <i class="fas fa-spinner fa-spin"></i> Loading...
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
@@ -1119,12 +1133,12 @@
                         : null);
                 
                 html += `
-                        <div class="point-item ${isSelected ? 'selected' : ''}"
-                             draggable="true"
-                             data-index="${index}"
-                             ondragstart="dragStart(event)"
-                             ondragover="dragOver(event)"
-                             ondrop="dropPoint(event)">
+                    <div class="point-item ${isSelected ? 'selected' : ''}"
+                         draggable="true"
+                         data-index="${index}"
+                         ondragstart="dragStart(event)"
+                         ondragover="dragOver(event)"
+                         ondrop="dropPoint(event)">
                         <input type="checkbox" 
                                ${isSelected ? 'checked' : ''} 
                                onchange="toggleSelection(${index})">
@@ -1285,12 +1299,13 @@
         }
 
         // Utility Functions
-
         function dragStart(e) {
             e.dataTransfer.setData('text/plain', e.currentTarget.dataset.index);
         }
 
-        function dragOver(e) { e.preventDefault(); }   // autorise le drop
+        function dragOver(e) { 
+            e.preventDefault(); 
+        }
 
         function dropPoint(e) {
             e.preventDefault();
@@ -1298,7 +1313,7 @@
             const to   = +e.currentTarget.dataset.index;
             if (from === to) return;
 
-            saveState();                      // historisation undo/redo
+            saveState();
             const [pt]     = state.points.splice(from, 1);
             const [marker] = state.markers.splice(from, 1);
             state.points.splice(to, 0, pt);
@@ -1465,8 +1480,12 @@
 
         // UI Helpers
         function showLoading(show) {
-            state.isLoading = show;
-            // Could add a loading spinner overlay if needed
+            const loading = document.getElementById('loading');
+            if (show) {
+                loading.classList.add('show');
+            } else {
+                loading.classList.remove('show');
+            }
         }
 
         function showNotification(message, type = 'info') {
