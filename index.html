@@ -871,6 +871,18 @@
                 }
             });
         }
+        
+        let searchTimeout;
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                if (searchInput.value.trim()) {
+                    searchLocation();}
+                }, config.searchDelay);
+            });
+        }
 
         function handleKeyboardShortcuts(e) {
             if (e.ctrlKey || e.metaKey) {
